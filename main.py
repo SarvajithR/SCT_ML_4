@@ -26,7 +26,7 @@ from PIL import Image
 # 1. CONFIGURATION
 # ----------------------------------------------------------------------------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-MODEL_PATH = os.path.join(BASE_DIR, "saved_model", "gesture_model.h5")
+MODEL_PATH = os.path.join(BASE_DIR, "gesture_model.h5")
 EXAMPLES_DIR = os.path.join(BASE_DIR, "images")
 
 # Target image size expected by the MobileNetV2 backbone
