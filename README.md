@@ -8,7 +8,6 @@ An AI-powered web application that recognizes **hand gestures from images** usin
 predicts which of **10 gesture classes** it belongs to — along with a confidence
 percentage.
 
-![App Preview](outputs/app_interface_preview.png)
 
 ---
 
@@ -263,19 +262,15 @@ Then open the local URL printed in the terminal (typically
 
 ### Training Accuracy
 
-![Training Accuracy](outputs/training_accuracy.png)
 
 ### Training Loss
 
-![Training Loss](outputs/training_loss.png)
 
 ### Confusion Matrix
 
-![Confusion Matrix](outputs/confusion_matrix.png)
 
 ### Sample Predictions
 
-![Prediction Examples](outputs/prediction_examples.png)
 
 ---
 
