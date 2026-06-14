@@ -5,9 +5,6 @@
 # Core Deep Learning Framework
 tensorflow==2.15.0
 
-# Web Application Framework
-gradio==4.31.0
-
 # Data Handling & Numerical Computing
 numpy==1.26.4
 pandas==2.2.2
@@ -29,4 +26,3 @@ kagglehub==0.2.5
 # Progress Bars (used in training notebook)
 tqdm==4.66.2
 
-huggingface_hub<1.0
