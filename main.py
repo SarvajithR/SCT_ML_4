@@ -4,10 +4,10 @@
  TASK 04: Hand Gesture Recognition using Deep Learning (Transfer Learning)
 ==================================================================================
 
-This script launches a Gradio web application that allows a user to upload an
-image of a hand gesture and receive a real-time prediction of the gesture class
-along with a confidence score, powered by a MobileNetV2-based transfer learning
-model trained on the Kaggle "LeapGestRecog" dataset.
+This Streamlit web app allows a user to upload an image of a hand gesture and
+receive a real-time prediction of the gesture class along with a confidence
+score, powered by a MobileNetV2-based transfer learning model trained on the
+Kaggle "LeapGestRecog" dataset.
 
 Author : SkillCraft ML Intern
 Dataset: https://www.kaggle.com/datasets/gti-upm/leapgestrecog
@@ -16,7 +16,7 @@ Dataset: https://www.kaggle.com/datasets/gti-upm/leapgestrecog
 
 import os
 import numpy as np
-import gradio as gr
+import streamlit as st
 import tensorflow as tf
 from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
 from PIL import Image
@@ -34,7 +34,6 @@ IMG_SIZE = (224, 224)
 
 # Class names correspond to the 10 gesture folders inside the
 # LeapGestRecog dataset (in their natural sorted order: 01_palm ... 10_down).
-# A human-friendly display label is mapped for each raw class name.
 CLASS_NAMES = [
     "01_palm",
     "02_l",
@@ -76,8 +75,9 @@ GESTURE_DESCRIPTIONS = {
 
 
 # ----------------------------------------------------------------------------
-# 2. MODEL LOADING
+# 2. MODEL LOADING (cached so it only loads once, not on every interaction)
 # ----------------------------------------------------------------------------
+@st.cache_resource(show_spinner="Loading gesture recognition model...")
 def load_gesture_model(model_path: str):
     """
     Load the trained Keras MobileNetV2 transfer-learning model from disk.
@@ -88,21 +88,14 @@ def load_gesture_model(model_path: str):
         The loaded model, or None if the file could not be found / loaded.
     """
     if not os.path.exists(model_path):
-        print(f"[WARNING] Model file not found at: {model_path}")
-        print("[WARNING] Please run 'hand_gesture_training.ipynb' first to "
-              "train and export the model.")
         return None
 
     try:
-        model = tf.keras.models.load_model(model_path)
-        print(f"[INFO] Model successfully loaded from: {model_path}")
-        return model
-    except Exception as exc:  # pragma: no cover
-        print(f"[ERROR] Failed to load model: {exc}")
+        return tf.keras.models.load_model(model_path)
+    except Exception:  # pragma: no cover
         return None
 
 
-# Load the model once at startup so repeated predictions are fast.
 gesture_model = load_gesture_model(MODEL_PATH)
 
 
@@ -136,33 +129,17 @@ def preprocess_image(image: Image.Image) -> np.ndarray:
 def predict_gesture(image: Image.Image):
     """
     Run inference on the uploaded image and return:
-        1. A dictionary {class_label: probability} for gr.Label (top-5 shown).
+        1. A dictionary {display_label: probability} for all 10 classes.
         2. A Markdown-formatted summary describing the top prediction.
-
-    This function is wired directly to the "Predict Gesture" button in the
-    Gradio interface.
     """
-    if image is None:
-        return {}, "⚠️ Please upload an image first."
-
-    if gesture_model is None:
-        return {}, (
-            "❌ **Model not found.** Please train the model using "
-            "`hand_gesture_training.ipynb` and place `gesture_model.h5` "
-            "inside the `saved_model/` directory."
-        )
-
-    # Preprocess and run inference
     processed = preprocess_image(image)
     predictions = gesture_model.predict(processed, verbose=0)[0]
 
-    # Build the {label: confidence} dictionary for gr.Label
     confidence_scores = {
         DISPLAY_LABELS[CLASS_NAMES[i]]: float(predictions[i])
         for i in range(len(CLASS_NAMES))
     }
 
-    # Identify the top prediction
     top_index = int(np.argmax(predictions))
     top_class = CLASS_NAMES[top_index]
     top_confidence = float(predictions[top_index]) * 100
@@ -181,137 +158,155 @@ def predict_gesture(image: Image.Image):
 # ----------------------------------------------------------------------------
 def get_example_images(examples_dir: str):
     """
-    Collect a list of example image file paths from the `images/` directory
-    to populate the Gradio Examples gallery. Falls back to an empty list if
-    the directory does not exist or has no images.
+    Collect a list of example image file paths from the `images/` directory.
+    Falls back to an empty list if the directory does not exist or has no
+    images.
     """
     if not os.path.isdir(examples_dir):
         return []
 
     valid_extensions = (".png", ".jpg", ".jpeg")
-    files = sorted(
+    return sorted(
         os.path.join(examples_dir, f)
         for f in os.listdir(examples_dir)
         if f.lower().endswith(valid_extensions)
     )
-    return files
 
 
 EXAMPLE_IMAGES = get_example_images(EXAMPLES_DIR)
 
 
 # ----------------------------------------------------------------------------
-# 6. CUSTOM STYLING (Clean, Light Theme)
+# 6. PAGE CONFIG + LIGHT THEME STYLING
 # ----------------------------------------------------------------------------
-custom_css = """
-#app-title {
-    text-align: center;
-    font-weight: 700;
-    color: #1f2937;
-}
-#app-subtitle {
-    text-align: center;
-    color: #4b5563;
-    margin-bottom: 1rem;
-}
-.gradio-container {
-    background-color: #f9fafb !important;
-}
-footer {visibility: hidden}
-"""
+st.set_page_config(
+    page_title="Hand Gesture Recognition AI",
+    page_icon="✋",
+    layout="wide",
+)
 
-light_theme = gr.themes.Soft(
-    primary_hue="blue",
-    secondary_hue="sky",
-    neutral_hue="slate",
-).set(
-    body_background_fill="#f9fafb",
-    block_background_fill="#ffffff",
-    block_border_color="#e5e7eb",
-    button_primary_background_fill="#2563eb",
-    button_primary_background_fill_hover="#1d4ed8",
-    button_primary_text_color="#ffffff",
+st.markdown(
+    """
+    <style>
+    .stApp { background-color: #f9fafb; }
+    div.stButton > button:first-child {
+        background-color: #2563eb;
+        color: #ffffff;
+        border-radius: 6px;
+        border: none;
+    }
+    div.stButton > button:first-child:hover {
+        background-color: #1d4ed8;
+        color: #ffffff;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
 )
 
 
 # ----------------------------------------------------------------------------
-# 7. GRADIO INTERFACE
+# 7. HEADER
 # ----------------------------------------------------------------------------
-with gr.Blocks(theme=light_theme, css=custom_css, title="Hand Gesture Recognition AI") as demo:
+st.markdown(
+    "<h1 style='text-align:center;color:#1f2937;'>"
+    "✋ AI-Powered Hand Gesture Recognition</h1>",
+    unsafe_allow_html=True,
+)
+st.markdown(
+    "<p style='text-align:center;color:#4b5563;'>"
+    "SkillCraft Technology — Machine Learning Internship | Task 04<br>"
+    "Upload a hand gesture image and let a <b>MobileNetV2 transfer-learning "
+    "model</b> predict which of the <b>10 LeapGestRecog gestures</b> it "
+    "represents, complete with a confidence score."
+    "</p>",
+    unsafe_allow_html=True,
+)
+st.markdown("---")
 
-    gr.Markdown(
-        "# ✋ AI-Powered Hand Gesture Recognition",
-        elem_id="app-title",
+
+# ----------------------------------------------------------------------------
+# 8. SESSION STATE FOR THE CURRENTLY SELECTED IMAGE
+# ----------------------------------------------------------------------------
+if "selected_image" not in st.session_state:
+    st.session_state.selected_image = None
+
+
+# ----------------------------------------------------------------------------
+# 9. MAIN LAYOUT
+# ----------------------------------------------------------------------------
+col_input, col_output = st.columns(2)
+
+with col_input:
+    uploaded_file = st.file_uploader(
+        "📤 Upload Hand Gesture Image",
+        type=["png", "jpg", "jpeg"],
     )
-    gr.Markdown(
-        "### SkillCraft Technology — Machine Learning Internship | Task 04\n"
-        "Upload a hand gesture image and let a **MobileNetV2 transfer-learning "
-        "model** predict which of the **10 LeapGestRecog gestures** it represents, "
-        "complete with a confidence score.",
-        elem_id="app-subtitle",
-    )
 
-    with gr.Row():
-        # ---------------- Left column: input ----------------
-        with gr.Column(scale=1):
-            image_input = gr.Image(
-                type="pil",
-                label="📤 Upload Hand Gesture Image",
-                height=300,
-            )
-            predict_btn = gr.Button("🔍 Predict Gesture", variant="primary")
+    if uploaded_file is not None:
+        st.session_state.selected_image = Image.open(uploaded_file)
 
-            gr.Examples(
-                examples=EXAMPLE_IMAGES,
-                inputs=image_input,
-                label="🖼️ Example Gestures (click to try)",
-                examples_per_page=10,
-            )
+    if EXAMPLE_IMAGES:
+        st.markdown("**🖼️ Example Gestures (click to try)**")
+        example_cols = st.columns(5)
+        for i, img_path in enumerate(EXAMPLE_IMAGES[:10]):
+            with example_cols[i % 5]:
+                st.image(img_path, use_container_width=True)
+                if st.button("Use", key=f"example_{i}"):
+                    st.session_state.selected_image = Image.open(img_path)
 
-        # ---------------- Right column: output ----------------
-        with gr.Column(scale=1):
-            result_summary = gr.Markdown(
-                value="### 🤖 Prediction results will appear here.",
-                label="Result",
-            )
-            confidence_label = gr.Label(
-                label="📊 Confidence Scores (All Classes)",
-                num_top_classes=5,
-            )
-
-    gr.Markdown(
-        "---\n"
-        "#### ℹ️ About the Gestures\n"
-        "| Class | Gesture | Description |\n"
-        "|---|---|---|\n"
-        + "\n".join(
-            f"| `{c}` | {DISPLAY_LABELS[c]} | {GESTURE_DESCRIPTIONS[c]} |"
-            for c in CLASS_NAMES
+    if st.session_state.selected_image is not None:
+        st.image(
+            st.session_state.selected_image,
+            caption="Selected Image",
+            use_container_width=True,
         )
-    )
 
-    gr.Markdown(
-        "---\n"
-        "🔧 **Model:** MobileNetV2 (ImageNet weights, frozen base) + custom "
-        "dense classification head, fine-tuned on the "
-        "[LeapGestRecog dataset](https://www.kaggle.com/datasets/gti-upm/leapgestrecog).  \n"
-        "👨‍💻 Built with **TensorFlow / Keras** + **Gradio**.",
-    )
+    predict_clicked = st.button("🔍 Predict Gesture", type="primary")
 
-    # Wire up the predict button
-    predict_btn.click(
-        fn=predict_gesture,
-        inputs=image_input,
-        outputs=[confidence_label, result_summary],
-    )
+with col_output:
+    if predict_clicked:
+        if st.session_state.selected_image is None:
+            st.warning("⚠️ Please upload or select an image first.")
+        elif gesture_model is None:
+            st.error(
+                "❌ **Model not found.** Please train the model using "
+                "`hand_gesture_training.ipynb` and place `gesture_model.h5` "
+                "inside the `saved_model/` directory."
+            )
+        else:
+            confidence_scores, summary = predict_gesture(
+                st.session_state.selected_image
+            )
+            st.markdown(summary)
+
+            st.markdown("##### 📊 Confidence Scores (Top 5)")
+            sorted_scores = sorted(
+                confidence_scores.items(), key=lambda x: x[1], reverse=True
+            )[:5]
+            for label, score in sorted_scores:
+                st.write(f"{label} — {score * 100:.2f}%")
+                st.progress(min(max(score, 0.0), 1.0))
+    else:
+        st.markdown("### 🤖 Prediction results will appear here.")
 
 
 # ----------------------------------------------------------------------------
-# 8. LAUNCH
+# 10. GESTURE REFERENCE TABLE
 # ----------------------------------------------------------------------------
-if __name__ == "__main__":
-    demo.launch(
-        server_name="0.0.0.0",
-        server_port=7860,
-        share=False,
-    )
+st.markdown("---")
+st.markdown("#### ℹ️ About the Gestures")
+
+table_md = "| Class | Gesture | Description |\n|---|---|---|\n" + "\n".join(
+    f"| `{c}` | {DISPLAY_LABELS[c]} | {GESTURE_DESCRIPTIONS[c]} |"
+    for c in CLASS_NAMES
+)
+st.markdown(table_md)
+
+st.markdown("---")
+st.markdown(
+    "🔧 **Model:** MobileNetV2 (ImageNet weights, frozen base) + custom "
+    "dense classification head, fine-tuned on the "
+    "[LeapGestRecog dataset](https://www.kaggle.com/datasets/gti-upm/leapgestrecog).  \n"
+    "👨‍💻 Built with **TensorFlow / Keras** + **Streamlit**."
+)
