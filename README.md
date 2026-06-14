@@ -278,7 +278,6 @@ Then open the local URL printed in the terminal (typically
 
 ### Web Application Interface
 
-![Gradio App Interface](outputs/app_interface_preview.png)
 
 The interface includes:
 
