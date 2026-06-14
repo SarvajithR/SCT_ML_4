@@ -1,0 +1,30 @@
+# ==========================================================
+# SkillCraft Technology - ML Internship | Task 04
+# Hand Gesture Recognition using Transfer Learning (MobileNetV2)
+# ==========================================================
+# Core Deep Learning Framework
+tensorflow==2.15.0
+
+# Web Application Framework
+gradio==4.31.0
+
+# Data Handling & Numerical Computing
+numpy==1.26.4
+pandas==2.2.2
+
+# Image Processing
+Pillow==10.3.0
+opencv-python==4.9.0.80
+
+# Visualization
+matplotlib==3.8.4
+seaborn==0.13.2
+
+# Machine Learning Utilities
+scikit-learn==1.4.2
+
+# Dataset Download (Kaggle LeapGestRecog)
+kagglehub==0.2.5
+
+# Progress Bars (used in training notebook)
+tqdm==4.66.2
